@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2024 Imran Mustafa <imran@imranmustafa.net>
+# SPDX-License-Identifier: GPL-3.0-or-later
+* EXE Check
+A simple python script that will output the headers of PE32 (.exe) files. You
+can find an overview of the format [[https://learn.microsoft.com/en-us/windows/win32/debug/pe-format][here]] if you need more resources besides this
+tool.
+* Usage
+The script only relies on the standard python library, so as long as you have
+anything recent installed it should just work.
+#+begin_src sh
+./execheck.py [FILE]...
+#+end_src
+* Copyright/Licensing
+Copyright (C) 2024  Imran Mustafa
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.

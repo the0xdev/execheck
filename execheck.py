@@ -11,45 +11,48 @@ import pprint
 
 def execheck(file: Path) -> dict:
     with open(file, "rb") as f:
+        readstr = lambda bytes : f.read(bytes).decode()
+        readhex = lambda bytes : int.from_bytes(f.read(bytes), byteorder="little")
         DOSHeader = {
-            "signature": f.read(2).decode(),
-            "extraPageSize": f.read(2),
-            "numberOfPages": f.read(2),
-            "relocations": f.read(2),
-            "headerSizeInParagraphs": f.read(2),
-            "minimumAllocatedParagraphs": f.read(2),
-            "maximumAllocatedParagraphs": f.read(2),
-            "initialSSValue": f.read(2),
-            "initialRelativeSPValue": f.read(2),
-            "checksum": f.read(2),
-            "initialRelativeIPValue": f.read(2),
-            "initialCSValue": f.read(2),
-            "relocationsTablePointer": f.read(2),
-            "overlayNumber": f.read(2),
-            "reservedWords": f.read(8),
-            "oemIdentifier": f.read(2),
-            "oemInformation": f.read(2),
-            "otherReservedWords": f.read(20),
-            "coffHeaderPointer": f.read(4)
+            "signature": readstr(2),
+            "extraPageSize": readhex(2),
+            "numberOfPages": readhex(2),
+            "relocations": readhex(2),
+            "headerSizeInParagraphs": readhex(2),
+            "minimumAllocatedParagraphs": readhex(2),
+            "maximumAllocatedParagraphs": readhex(2),
+            "initialSSValue": readhex(2),
+            "initialRelativeSPValue": readhex(2),
+            "checksum": readhex(2),
+            "initialRelativeIPValue": readhex(2),
+            "initialCSValue": readhex(2),
+            "relocationsTablePointer": readhex(2),
+            "overlayNumber": readhex(2),
+            "reservedWords": readhex(8),
+            "oemIdentifier": readhex(2),
+            "oemInformation": readhex(2),
+            "otherReservedWords": readhex(20),
+            "coffHeaderPointer": readhex(4)
         }
         DOSStub = {
-            "code": f.read(14),
-            "message": f.read(39).decode(),
-            "data": f.read(3).decode()
+            "code": readhex(14),
+            "message": readstr(39),
+            "data": readstr(3)
         }
-        f.seek(int.from_bytes(DOSHeader["coffHeaderPointer"], byteorder="little"))
+        f.seek(DOSHeader["coffHeaderPointer"])
         coffHeader = {
-            "signature": f.read(4).decode(),
-            "architecture": f.read(2),
-            "numberOfSections": f.read(2),
-            "timeDateStamp": f.read(4),
-            "pointerToSymbolTable": f.read(4),
-            "numberOfSymbols": f.read(4),
-            "sizeOfOptionalHeader": f.read(2),
+            "signature": readstr(4),
+            "architecture": readhex(2),
+            "numberOfSections": readhex(2),
+            "timeDateStamp": readhex(4),
+            "pointerToSymbolTable": readhex(4),
+            "numberOfSymbols": readhex(4),
+            "sizeOfOptionalHeader": readhex(2),
         }
         array = f.read(2)
-        byte1 = "{0:08b}".format(array[0])
-        byte2 = "{0:08b}".format(array[1])
+        byte_bit_bool = lambda arr: list(map(lambda c : True if c == "1" else False, "{0:08b}".format(arr)))
+        byte1 = byte_bit_bool(array[0])
+        byte2 = byte_bit_bool(array[1])
         Characteristics = {
             "baseRelocationsStripped": byte1[7],
             "executableImage": byte1[6],
@@ -69,7 +72,7 @@ def execheck(file: Path) -> dict:
         }
         coffHeader["Characteristics"] = Characteristics
 
-        if int.from_bytes(coffHeader["sizeOfOptionalHeader"], byteorder="little") > 0:
+        if coffHeader["sizeOfOptionalHeader"] > 0:
             optionalHeader = {
             
             }

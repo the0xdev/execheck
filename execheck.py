@@ -49,10 +49,33 @@ class Architecture(Enum):
 	THUMB = "0x1c2"
 	WCEMIPSV2 = "0x169"
 
+class PEFormat(Enum):
+        ROM = "0x107"
+        PE32 = "0x10b"
+        PE32Plus = "0x20b"
+
+class SubsystemType(Enum):
+        Unknown = "0x0"
+        Native = "0x1"
+        WindowsGUI = "0x2"
+        WindowsCUI = "0x3"
+        OS2CUI = "0x5"
+        POSIXCUI = "0x7"
+        Windows9xNative = "0x8"
+        WindowsCEGUI = "0x9"
+        EFIApplication = "0xa"
+        EFIBootServiceDriver = "0xb"
+        EFIRuntimeDriver = "0xc"
+        EFIROM = "0xd"
+        Xbox = "0xe"
+        WindowsBootApplication = "0x10"
+
 def execheck(file: Path) -> dict:
     with open(file, "rb") as f:
         readstr = lambda bytes : f.read(bytes).decode()
         readint = lambda bytes : int.from_bytes(f.read(bytes), byteorder="little")
+        byte_bit_bool = lambda arr: list(map(lambda c : True if c == "1" else False, "{0:08b}".format(arr)))
+
         DOSHeader = {
             "signature": readstr(2),
             "extraPageSize": readint(2),
@@ -90,7 +113,6 @@ def execheck(file: Path) -> dict:
             "sizeOfOptionalHeader": readint(2),
         }
         array = f.read(2)
-        byte_bit_bool = lambda arr: list(map(lambda c : True if c == "1" else False, "{0:08b}".format(arr)))
         byte1 = byte_bit_bool(array[0])
         byte2 = byte_bit_bool(array[1])
         Characteristics = {
@@ -112,12 +134,88 @@ def execheck(file: Path) -> dict:
         }
         coffHeader["Characteristics"] = Characteristics
 
+        optionalHeader = {}
         if coffHeader["sizeOfOptionalHeader"] > 0:
-            optionalHeader = {
-            
-            }
-            coffHeader["optionalHeader"] = optionalHeader
-        
+                optionalHeader["magic"] = PEFormat(hex(readint(2))),
+                optionalHeader["majorLinkerVersion"] = readint(1)
+                optionalHeader["minorLinkerVersion"] = readint(1)
+                optionalHeader["sizeOfCode"] = readint(4)
+                optionalHeader["sizeOfInitializedData"] = readint(4)
+                optionalHeader["sizeOfUninitializedData"] = readint(4)
+                optionalHeader["addressOfEntryPoint"] = readint(4)
+                optionalHeader["baseOfCode"] = readint(4)
+
+                if optionalHeader.get("magic") == PEFormat.PE32Plus:
+                        optionalHeader["imageBase"] = readint(8)
+                else:
+                        optionalHeader["baseOfData"] = readint(4)
+                        optionalHeader["imageBase"] = readint(4)
+
+                optionalHeader["virtualSectionAlignment"] = readint(4)
+                optionalHeader["rawSectionAlignment"] = readint(4)
+                optionalHeader["majorOperatingSystemVersion"] = readint(2)
+                optionalHeader["minorOperatingSystemVersion"] = readint(2)
+                optionalHeader["majorImageVersion"] = readint(2)
+                optionalHeader["minorImageVersion"] = readint(2)
+                optionalHeader["majorSubsystemVersion"] = readint(2)
+                optionalHeader["minorSubsystemVersion"] = readint(2)
+                optionalHeader["win32VersionValue"] = readint(4)
+                optionalHeader["sizeOfImage"] = readint(4)
+                optionalHeader["sizeOfHeaders"] = readint(4)
+                optionalHeader["checksum"] = readint(4)
+                optionalHeader["subsystem"] = SubsystemType(hex(readint(2)))
+
+                array = f.read(2)
+                byte1 = byte_bit_bool(array[0])
+                byte2 = byte_bit_bool(array[1])
+
+                optionalHeader["dllCharacteristics"] = {
+                        "callWhenLoaded" : byte1[0],
+                        "callWhenThreadTerminates" : byte1[1],
+                        "callWhenThreadStarts" : byte1[2],
+                        "callWhenExiting" : byte1[3],
+                        "highEntropyVA" : byte1[5],
+                        "dynamicBase" : byte1[6],
+                        "forceIntegrity" : byte1[7],
+
+                        "nxCompatible" : byte2[0],
+                        "noIsolation" : byte2[1],
+                        "noSEH" : byte2[2],
+                        "doNotBind" : byte2[3],
+                        "appContainer" : byte2[4],
+                        "isWDMDriver" : byte2[5],
+                        "supportsControlFlowGuard" : byte2[6],
+                        "terminalServerAware" : byte2[7],
+                }
+
+                readsize = 8 if optionalHeader.get("magic") == PEFormat.PE32Plus else 4
+
+                optionalHeader["sizeOfStackReserve"] = readint(readsize)
+                optionalHeader["sizeOfStackCommit"] = readint(readsize)
+                optionalHeader["sizeOfHeapReserve"] = readint(readsize)
+                optionalHeader["sizeOfHeapCommit"] = readint(readsize)
+
+                array = f.read(4)
+                byte1 = byte_bit_bool(array[0])
+
+                optionalHeader["loaderFlags"] = {
+                        "prestartBreakpoint" : byte1[0],
+                        "postloadingDebugger" : byte1[1],
+                }
+
+                optionalHeader["numberOfRVAsAndSizes"] = readint(4)
+
+                directories = {}
+
+                for ii in range(optionalHeader.get("numberOfRVAsAndSizes", 0)):
+                        directories[ii] = {
+                                "rva" : readint(4),
+                                "size" : readint(4)
+                        }
+                optionalHeader["directories"] = directories
+        else:
+                optionalHeader = None
+        coffHeader["optionalHeader"] = optionalHeader
     return {
         "PEHeader": {
             "DOSheader": DOSHeader,
